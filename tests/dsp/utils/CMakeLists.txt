@@ -1,10 +1,11 @@
 add_executable(utils_test
     test_buffer.cpp
+    test_sampler.cpp
 )
 
 target_link_libraries(utils_test
 PRIVATE
-    utils
+    dsp
     Catch2::Catch2WithMain
 )
 
