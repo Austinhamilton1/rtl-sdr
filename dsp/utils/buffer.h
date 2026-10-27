@@ -3,15 +3,31 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace detail {
     constexpr uint64_t safety_margin_ns = 1000000; // 1 ms safety margin
     constexpr size_t chunk_size = 4096; // Size of each chunk in the buffer
+
+    constexpr size_t max_chunks = 16384;
 }
 
 class Buffer {
-    using DspCallback = void (*)(float *interleaved_iq, size_t complex_samples);
+public:
+    using DspCallback = void (*)(
+        void *user_data,
+        float *I, 
+        float *Q, 
+        size_t complex_samples, 
+        uint64_t *estimated_runtime_ns
+    );
+
+private:
+    struct Callback {
+        DspCallback func;
+        uint64_t estimated_runtime_ns;
+    };
 
 public:
     /*
@@ -40,9 +56,23 @@ public:
      * Registers a DSP function to be called when a chunk of the buffer is complete.
      * @param callback The DSP function to be registered.
      */
-    void register_dsp(DspCallback callback, uint64_t complete_ns_hint);
+    void register_dsp(DspCallback callback, uint64_t estimated_runtime_ns);
 
-    int run_dsp_callbacks();
+    /*
+     * Consume buffer data chunks and call DSP functions on the data. Continues
+     * to consume until there are no more chunks.
+     * @param *user_data Data the user wants to pass through to the DSP callbacks.
+     * @return An integr indicating the success of all callbacks.
+     */
+    int run_dsp_callbacks(void *user_data);
+
+    /*
+     * Return the execution runtime of one of the callbacks. This is mostly
+     * beneficial if the callback updates its runtime overtime.
+     * @param function The function pointer.
+     * @return The execution runtime in nanoseconds.
+     */
+    uint64_t get_execution_runtime_ns(DspCallback function);
 
 private:
     static constexpr uint64_t saturating_add(uint64_t a, uint64_t b) noexcept {
@@ -52,16 +82,20 @@ private:
 
     bool has_complete_chunk(uint64_t tail, uint64_t published_head) const noexcept;
 
-    bool should_copy(uint64_t tail, uint64_t total_callback_hint_ns) const noexcept;
+    bool should_copy(uint64_t tail, uint64_t total_estimated_runtime_ns) const noexcept;
 
-    void invoke_callback(float *data);
+    void invoke_callbacks(void *user_data, float *I, float *Q);
+
+    uint64_t total_estimated_runtime_ns() const noexcept;
 
     const size_t m_capacity_samples;
     const uint64_t m_sample_rate;
 
     // Fixed allocations: no allocation in push() or normal DSP path;
-    std::vector<float> m_buffer;
-    std::vector<float> m_scratch_buffer;
+    std::vector<float> m_buffer_I;
+    std::vector<float> m_buffer_Q;
+    std::vector<float> m_scratch_buffer_I;
+    std::vector<float> m_scratch_buffer_Q;
 
     // Producer-owned write position, in complex samples (I/Q pairs)
     uint64_t m_head{0};
@@ -75,6 +109,5 @@ private:
     // Consumer's released position, in complex samples (I/Q pairs)
     std::atomic<uint64_t> m_tail{0};
 
-    std::vector<std::pair<DspCallback, uint64_t>> m_dsp_callbacks;
-    uint64_t m_total_callback_hint_ns{0};
+    std::vector<Callback> m_dsp_callbacks;
 };
