@@ -6,6 +6,8 @@
 
 class Sampler {
 public:
+    Sampler() = default;
+    
     /*
      * This class only supports downsampling:
      * 0 < output_rate <= input_rate.

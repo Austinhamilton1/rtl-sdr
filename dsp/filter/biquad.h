@@ -8,6 +8,8 @@ struct BiquadCoeff {
 
 class BiquadFilter {
 public:
+    BiquadFilter() = default;
+    
     BiquadFilter(BiquadCoeff coeff);
 
     /*

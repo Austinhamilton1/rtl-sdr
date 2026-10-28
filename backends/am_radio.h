@@ -27,7 +27,7 @@ struct RadioConfig {
 
 class AMReceiver {
 public:
-    AMReceiver();
+    AMReceiver() = default;
 
     /*
      * Configure SDR, design filters and resampler, allocate buffer space, and open audio sink.

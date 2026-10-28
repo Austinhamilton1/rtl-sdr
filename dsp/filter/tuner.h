@@ -9,6 +9,8 @@
 
 class Tuner {
 public:
+    Tuner() = default;
+    
     /*
      * Initialize a tuner.
      * @param sample_rate Sampling rate in Hz.

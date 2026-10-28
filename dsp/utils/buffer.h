@@ -33,6 +33,8 @@ private:
     };
 
 public:
+    Buffer() = default;
+    
     /*
      * Constructor for the Buffer class.
      * @param num_chunks The number of chunks in the buffer.

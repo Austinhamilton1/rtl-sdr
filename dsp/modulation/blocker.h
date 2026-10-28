@@ -2,6 +2,8 @@
 
 class DCBlocker {
 public:
+    DCBlocker() = default; 
+    
     /*
      * Constructs a DC blocker with the specified cutoff frequency and sample rate.
      * @param cutoff_freq The cutoff frequency in Hz. Must be positive.
