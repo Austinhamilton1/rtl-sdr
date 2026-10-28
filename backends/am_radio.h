@@ -22,11 +22,13 @@ struct RadioConfig {
     uint32_t channel_cutoff; // in Hz
     uint32_t audio_cutoff;   // in Hz
 
-    int audio_gain; // in dB
+    float audio_gain; // in dB
 };
 
 class AMReceiver {
 public:
+    AMReceiver();
+
     /*
      * Configure SDR, design filters and resampler, allocate buffer space, and open audio sink.
      * @param config Configuration parameters for the radio.
@@ -40,6 +42,12 @@ public:
     void set_station_frequency(uint32_t station_hz);
 
     /*
+     * Set the audio gain of the station.
+     * @param gain Gain of the station.
+     */
+    void set_audio_gain(float gain_db) noexcept;
+
+    /*
      * Actively run the AM receiver and play audio. 
      */
     void run();
@@ -48,6 +56,7 @@ public:
      * Stop the AM receiver.
      */
     void stop();
+    void request_stop() noexcept;
 
     /*
      * Get a reference to the internal audio sink.
@@ -104,12 +113,12 @@ public:
     std::vector<float>& resampled() noexcept {
         return m_resampled;
     }
-
+    
     /*
-     * Get the internal config data.
+     * Return the linear gain of the system.
      */
-    const RadioConfig& config() const noexcept {
-        return m_config;
+    float gain_linear() const noexcept {
+        return m_gain_linear.load(std::memory_order_relaxed);
     }
     
 private:
@@ -133,4 +142,6 @@ private:
 
     std::thread m_producer;
     std::thread m_consumer;
+
+    std::atomic<float> m_gain_linear{1.0f};
 };

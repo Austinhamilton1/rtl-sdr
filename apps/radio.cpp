@@ -2,9 +2,34 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <GLFW/glfw3.h> // Will automatically include system OpenGL headers
-#include <algorithm>
 
-int main() {
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+
+#include "backends/am_radio.h"
+
+int main(int argc, char **argv) {
+    if(argc != 6) {
+        std::cerr << "Inavalid usage: "
+                  << "radio {center_frequency} {iq_sample_rate} "
+                  << "{audio_sample_rate} {channel_cutoff} "
+                  << "{audio_cutoff}\n";
+        return 1;
+    }
+
+    RadioConfig config;
+    config.center_frequency = std::stoul(argv[1]);
+    config.iq_sample_rate = std::stoull(argv[2]);
+    config.audio_sample_rate = std::stoull(argv[3]);
+    config.channel_cutoff = std::stoul(argv[4]);
+    config.audio_cutoff = std::stoul(argv[5]);
+    config.audio_gain = 20.0f * std::log10(0.5f);
+
+    AMReceiver am;
+    am.initialize(config);
+    am.set_station_frequency(config.center_frequency);
+
     // 1. Initialize GLFW
     if (!glfwInit()) return -1;
 
@@ -31,9 +56,12 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    // Start the radio
+    am.run();
+
     // 3. Define your radio state variables
-    float volume = 50.0f;       // 0 to 100
-    int frequency = 880;        // AM Frequency in kHz
+    float volume = 50.0f;                               // 0 to 100
+    int frequency = config.center_frequency / 1000;     // AM Frequency in Hz
     
     // Equalizer variables (for later)
     float bass = 0.0f;
@@ -63,18 +91,43 @@ int main() {
 
         // --- Volume Control ---
         ImGui::Text("Volume");
-        ImGui::SliderFloat("##VolumeSlider", &volume, 0.0f, 100.0f, "%.0f%%");
+        if(ImGui::SliderFloat("##VolumeSlider", &volume, 0.0f, 100.0f, "%.0f%%")) {
+            if(volume <= 0.0f) {
+                am.set_audio_gain(-100.0f); // Effectively muted
+            } else {
+                const float linear_gain = volume / 100.0f;
+                const float gain_db = 20.0f * std::log10(linear_gain);
+                am.set_audio_gain(gain_db);
+            }
+        }
         
         ImGui::Separator();
 
         // --- Tuner Control ---
         ImGui::Text("AM Tuner (kHz)");
-        ImGui::SliderInt("##TunerSlider", &frequency, 530, 1700, "%d kHz");
-        
-        // Quick-tune buttons
-        if (ImGui::Button("-1 kHz")) { frequency = std::max(530, frequency - 1); }
+        bool frequency_changed = ImGui::SliderInt(
+            "##TunerSlider", &frequency, 530, 1700, "%d kHz"
+        );
+
+        if (ImGui::Button("-1 kHz")) {
+            const int previous = frequency;
+            frequency = std::max(530, frequency - 1);
+            frequency_changed |= frequency != previous;
+        }
+
         ImGui::SameLine();
-        if (ImGui::Button("+1 kHz")) { frequency = std::min(1700, frequency + 1); }
+
+        if (ImGui::Button("+1 kHz")) {
+            const int previous = frequency;
+            frequency = std::min(1700, frequency + 1);
+            frequency_changed |= frequency != previous;
+        }
+
+        if (frequency_changed) {
+            am.set_station_frequency(
+                static_cast<uint32_t>(frequency * 1000)
+            );
+        }
 
         // --- Future Equalizer Slot ---
         /*
@@ -96,6 +149,8 @@ int main() {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
+
+    am.stop();
 
     // Cleanup backends
     ImGui_ImplOpenGL3_Shutdown();

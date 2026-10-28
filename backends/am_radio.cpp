@@ -77,10 +77,8 @@ namespace {
     size_t dsp_reshape(void *userdata, float *, float *, size_t resampled_size) {
         AMReceiver *am = static_cast<AMReceiver *>(userdata);
 
-        const float gain = 
-            std::pow(10.0f, am->config().audio_gain / 20.0f);
-
         auto& samples = am->resampled();
+        const float gain = am->gain_linear();
 
         for(size_t i = 0; i < resampled_size; i++) {
             samples[i] = std::clamp(
@@ -106,11 +104,23 @@ namespace {
 }
 
 void AMReceiver::initialize(const RadioConfig& config) {
-    m_config = config;
-
-    if(config.iq_sample_rate == 0 || config.audio_sample_rate == 0) {
+    if (config.iq_sample_rate == 0 ||
+        config.audio_sample_rate == 0) {
         throw std::invalid_argument("Sample rates must be positive");
     }
+
+    if (config.channel_cutoff == 0 ||
+        config.channel_cutoff >= config.iq_sample_rate / 2) {
+        throw std::invalid_argument("Invalid channel cutoff");
+    }
+
+    if (config.audio_cutoff == 0 ||
+        config.audio_cutoff >= config.iq_sample_rate / 2) {
+        throw std::invalid_argument("Invalid audio cutoff");
+    }
+
+    m_config = config;
+    set_audio_gain(m_config.audio_gain);
 
     // 1. Coonfigure RTL-SDR: RF center, sample rate,
     //    receive bandwidth, and gain.
@@ -177,22 +187,37 @@ void AMReceiver::run() {
 
     m_producer = std::thread([&] {
         while(m_running.load(std::memory_order_relaxed)) {
-            m_sdr.read_samples(m_buffer, 4096);
+            if(m_sdr.read_samples(m_buffer, 4096) < 0) {
+                request_stop();
+                break;
+            }
         }
     });
 
     m_consumer = std::thread([&] {
         while(m_running.load(std::memory_order_relaxed)) {
             if(m_buffer.run_dsp_callbacks(this) < 0) {
-                stop();
+                request_stop();
+                break;
             }
         }
     });
 }
 
-void AMReceiver::stop() {
+void AMReceiver::request_stop() noexcept {
     m_running.store(false, std::memory_order_relaxed);
+}
+
+void AMReceiver::stop() {
+    request_stop();
 
     if(m_producer.joinable()) m_producer.join();
     if(m_consumer.joinable()) m_consumer.join();
+}
+
+void AMReceiver::set_audio_gain(float gain_db) noexcept {
+    m_gain_linear.store(
+        std::pow(10.0f, gain_db / 20.0f),
+        std::memory_order_relaxed
+    );
 }
