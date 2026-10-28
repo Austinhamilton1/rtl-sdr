@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     // Start the radio
     am.run();
 
-    // 3. Define your radio state variables
+    // 3. Define radio state variables
     float volume = 50.0f;                               // 0 to 100
     int frequency = config.center_frequency / 1000;     // AM Frequency in Hz
     
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // 4. Draw your simple Radio UI
+        // 4. Draw simple Radio UI
         // Center the ImGui panel perfectly in the window workspace
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         int display_w, display_h;
