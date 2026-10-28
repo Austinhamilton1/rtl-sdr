@@ -23,5 +23,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(RTLSDR REQUIRED IMPORTED_TARGET librtlsdr)
+
 add_subdirectory(dsp)
+add_subdirectory(radio)
 add_subdirectory(tests)

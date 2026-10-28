@@ -25,7 +25,7 @@ Tuner::Tuner(uint64_t sample_rate, BiquadCoeff coeff, size_t num_filters)
     }
 }
 
-void Tuner::set_tuning_offset(int64_t offset_hz) noexcept {
+void Tuner::set_tuning_offset(int32_t offset_hz) noexcept {
     m_tuning_offset_hz.store(offset_hz, std::memory_order_relaxed);
 }
 

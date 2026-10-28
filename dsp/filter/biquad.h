@@ -19,6 +19,15 @@ public:
      * @param num_samples Number of complex samples.
      */
     void filter(float *output_I, float *output_Q, const float *I, const float *Q, size_t num_samples);
+
+    /*
+     * Create lowpass filter coefficients.
+     * @param sample_rate Sampling rate.
+     * @param cutoff_freq Cutoff frequency.
+     * @param Q Q factor.
+     * @return BiquadCoeff struct containing the filter coefficients.
+     */
+    BiquadCoeff make_lowpass(double sample_rate, double cutoff_freq, double Q);
 private:
     BiquadCoeff c;
     float x1_i = 0, x2_i = 0, y1_i = 0, y2_i = 0;

@@ -1,5 +1,6 @@
 add_library(dsp_modulation
 SHARED
+    blocker.cpp
     demodulate.cpp
 )
 

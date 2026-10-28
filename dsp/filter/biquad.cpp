@@ -1,5 +1,6 @@
 #include "biquad.h"
 
+#include <cmath>
 #include <stdexcept>
 
 BiquadFilter::BiquadFilter(BiquadCoeff coeff)
@@ -51,4 +52,32 @@ void BiquadFilter::filter(
         output_I[i] = filtered_i;
         output_Q[i] = filtered_q;
     }
+}
+
+BiquadCoeff BiquadFilter::make_lowpass(double sample_rate, double cutoff_freq, double Q) {
+    if (sample_rate <= 0 || cutoff_freq <= 0 || cutoff_freq > sample_rate / 2.0 || Q <= 0) {
+        throw std::invalid_argument("Sample rate, cutoff frequency, and Q must be positive");
+    }
+
+    double w0 = 2.0 * M_PI * cutoff_freq / sample_rate;
+    double c = std::cos(w0);
+    double s = std::sin(w0);
+    double alpha = s / (2.0 * Q);
+
+    BiquadCoeff coeff;
+    coeff.b0 = (1.0 - c) / 2.0;
+    coeff.b1 = 1.0 - c;
+    coeff.b2 = (1.0 - c) / 2.0;
+    coeff.a1 = -2.0 * c;
+    coeff.a2 = 1.0 - alpha;
+
+    // Normalize coefficients
+    double a0 = 1.0 + alpha;
+    coeff.b0 /= a0;
+    coeff.b1 /= a0;
+    coeff.b2 /= a0;
+    coeff.a1 /= a0;
+    coeff.a2 /= a0;
+
+    return coeff;
 }

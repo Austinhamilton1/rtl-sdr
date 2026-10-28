@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <cmath>
 #include <stdexcept>
 
 #include "dsp/filter/biquad.h"
@@ -143,4 +144,37 @@ TEST_CASE("Biquad retains state between blocks", "[biquad]") {
         REQUIRE_THAT(split_Q[i],
             Catch::Matchers::WithinAbs(whole_Q[i], tolerance));
     }
+}
+
+TEST_CASE("Biquad coefficients are calculated correctly for lowpass filter", "[biquad]") {
+    BiquadFilter filter(identity_coeff());
+
+    double sample_rate = 48000.0;
+    double cutoff_freq = 1000.0;
+    double Q = 0.707;
+
+    BiquadCoeff coeff = filter.make_lowpass(sample_rate, cutoff_freq, Q);
+
+    // Expected coefficients calculated using standard formulas
+    double omega = 2.0 * M_PI * cutoff_freq / sample_rate;
+    double alpha = std::sin(omega) / (2.0 * Q);
+    double cos_omega = std::cos(omega);
+
+    double b0 = (1.0 - cos_omega) / 2.0;
+    double b1 = 1.0 - cos_omega;
+    double b2 = (1.0 - cos_omega) / 2.0;
+    double a0 = 1.0 + alpha;
+    double a1 = -2.0 * cos_omega;
+    double a2 = 1.0 - alpha;
+
+    REQUIRE_THAT(coeff.b0,
+        Catch::Matchers::WithinAbs(static_cast<float>(b0 / a0), tolerance));
+    REQUIRE_THAT(coeff.b1,
+        Catch::Matchers::WithinAbs(static_cast<float>(b1 / a0), tolerance));
+    REQUIRE_THAT(coeff.b2,
+        Catch::Matchers::WithinAbs(static_cast<float>(b2 / a0), tolerance));
+    REQUIRE_THAT(coeff.a1,
+        Catch::Matchers::WithinAbs(static_cast<float>(a1 / a0), tolerance));
+    REQUIRE_THAT(coeff.a2,
+        Catch::Matchers::WithinAbs(static_cast<float>(a2 / a0), tolerance));
 }

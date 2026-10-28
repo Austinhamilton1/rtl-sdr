@@ -22,7 +22,7 @@ public:
      * 1010 kHz, input 10_000. (Supports negative frequencies).
      * @param offset_hz Offset in Hz.
      */
-    void set_tuning_offset(int64_t offset_hz) noexcept;
+    void set_tuning_offset(int32_t offset_hz) noexcept;
 
     /*
      * Process a block of incoming data to tune to the Tuner's frequency.
@@ -35,7 +35,7 @@ public:
     void process(float *output_I, float *output_Q, const float *I, const float *Q, size_t num_samples);
 private:
     const double m_sample_rate;
-    std::atomic<int64_t> m_tuning_offset_hz{0};
+    std::atomic<int32_t> m_tuning_offset_hz{0};
     
     double m_phase = 0.0;
 
