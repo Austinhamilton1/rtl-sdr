@@ -12,10 +12,14 @@ public:
     /*
      * Initialize a tuner.
      * @param sample_rate Sampling rate in Hz.
-     * @param coeff Coefficients to use in the biquad filter.
-     * @param num_filters How many filters to apply.
      */
-    Tuner(uint64_t sample_rate, BiquadCoeff coeff, size_t num_filters);
+    Tuner(uint32_t sample_rate);
+
+    /*
+     * Initialize a tuner.
+     * @param sample_rate Sampling rate in Hz.
+     */
+    void initialize(uint32_t sample_rate);
 
     /*
      * Offset tuning. If center_frequency == 1000 kHz and you want
@@ -34,10 +38,8 @@ public:
      */
     void process(float *output_I, float *output_Q, const float *I, const float *Q, size_t num_samples);
 private:
-    const double m_sample_rate;
+    double m_sample_rate;
     std::atomic<int32_t> m_tuning_offset_hz{0};
     
     double m_phase = 0.0;
-
-    std::vector<BiquadFilter> m_filters;
 };

@@ -39,21 +39,25 @@ namespace {
         std::unordered_map<float, std::atomic<size_t>> m_table;  
     };
 
-    void consume_and_record(void *user_data, float *I, float *Q, size_t complex_samples, uint64_t *ns) {
+    size_t consume_and_record(void *user_data, float *I, float *Q, size_t complex_samples) {
         Recorder *recorder = (Recorder *)user_data;
 
         for(size_t i = 0; i < complex_samples; i++) {
             recorder->record(I[i]);
             recorder->record(Q[i]);
         }
+
+        return complex_samples;
     }
 
-    void consume_error(void *user_data, float *I, float *Q, size_t complex_samples, uint64_t *ns) {
+    size_t consume_error(void *user_data, float *I, float *Q, size_t complex_samples) {
         throw std::runtime_error("error");
+        return complex_samples;
     }
 
-    void consume_after_second(void *user_data, float *I, float *Q, size_t complex_samples, uint64_t *ns) {
+    size_t consume_after_second(void *user_data, float *I, float *Q, size_t complex_samples) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        return complex_samples;
     }
 
     struct magnitudes {
@@ -61,9 +65,7 @@ namespace {
         size_t offset;
     };
 
-    void consume_realistic(void *user_data, float *I, float *Q, size_t complex_samples, uint64_t *ns) {
-        auto start = std::chrono::steady_clock::now();
-
+    size_t consume_realistic(void *user_data, float *I, float *Q, size_t complex_samples) {
         double a = 0.75;
         double inverse_a = 0.25;
 
@@ -79,15 +81,7 @@ namespace {
 
         mags->offset += complex_samples;
 
-        auto end = std::chrono::steady_clock::now();
-
-        auto Tn = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-
-        double En = 
-            a * static_cast<double>(Tn) 
-            + inverse_a * static_cast<double>(*ns);
-
-        *ns = static_cast<uint64_t>(En);
+        return complex_samples;
     }
 }
 

@@ -25,7 +25,10 @@ FetchContent_MakeAvailable(Catch2)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(RTLSDR REQUIRED IMPORTED_TARGET librtlsdr)
+pkg_check_modules(PIPEWIRE REQUIRED IMPORTED_TARGET libpipewire-0.3)
 
+add_subdirectory(audio)
 add_subdirectory(dsp)
 add_subdirectory(radio)
 add_subdirectory(tests)
+add_subdirectory(backends)

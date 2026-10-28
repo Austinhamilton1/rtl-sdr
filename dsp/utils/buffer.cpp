@@ -1,11 +1,15 @@
 #include "buffer.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <stdexcept>
 #include <utility>
 
 namespace {
+    constexpr double a = 0.75;
+    constexpr double inverse_a = 0.25;
+
     size_t checked_capacity(size_t num_chunks) {
         if(num_chunks == 0) {
             throw std::invalid_argument(
@@ -32,6 +36,15 @@ Buffer::Buffer(size_t num_chunks, uint64_t sample_rate)
       m_buffer_Q(m_capacity_samples), 
       m_scratch_buffer_I(detail::chunk_size),
       m_scratch_buffer_Q(detail::chunk_size) {}
+
+void Buffer::initialize(size_t num_chunks, uint64_t sample_rate) {
+    m_capacity_samples = checked_capacity(num_chunks);
+    m_sample_rate = sample_rate;
+    m_buffer_I.resize(m_capacity_samples);
+    m_buffer_Q.resize(m_capacity_samples);
+    m_scratch_buffer_I.resize(detail::chunk_size);
+    m_scratch_buffer_Q.resize(detail::chunk_size);
+}
 
 int Buffer::push(float I, float Q) {
     // Single producer: this position is owned by the producer thread.
@@ -62,12 +75,12 @@ int Buffer::push(float I, float Q) {
     return 0; // Return success
 }
 
-void Buffer::register_dsp(DspCallback callback, uint64_t estimated_runtime_ns) {
+void Buffer::register_dsp(DspCallback callback, uint64_t runtime_hint_ns) {
     if(callback == nullptr) {
         throw std::invalid_argument("Callback function cannot be null.");
     }
 
-    m_dsp_callbacks.push_back({callback, estimated_runtime_ns});
+    m_dsp_callbacks.push_back({callback, runtime_hint_ns});
 }
 
 bool Buffer::has_complete_chunk(std::uint64_t tail, std::uint64_t published_head) const noexcept {
@@ -101,8 +114,20 @@ bool Buffer::should_copy(std::uint64_t tail, std::uint64_t total_estimated_runti
 }
 
 void Buffer::invoke_callbacks(void *user_data, float *I, float *Q) {
+    size_t output_shape = detail::chunk_size;
+
     for(auto& callback : m_dsp_callbacks) {
-        callback.func(user_data, I, Q, detail::chunk_size, &callback.estimated_runtime_ns);
+        auto start = std::chrono::steady_clock::now();
+        output_shape = callback.func(user_data, I, Q, output_shape);
+        auto end = std::chrono::steady_clock::now();
+
+        auto Tn = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+        double En =
+            a * static_cast<double>(Tn)
+            + inverse_a * static_cast<double>(callback.estimated_runtime_ns);
+
+        callback.estimated_runtime_ns = static_cast<uint64_t>(En);
     }
 }
 

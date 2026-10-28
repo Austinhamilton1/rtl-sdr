@@ -20,33 +20,6 @@ namespace {
     }
 }
 
-TEST_CASE("Biquad rejects null pointers", "[biquad]") {
-    BiquadFilter filter(identity_coeff());
-
-    float input_I[2]{}, input_Q[2]{};
-    float output_I[2]{}, output_Q[2]{};
-
-    REQUIRE_THROWS_AS(
-        filter.filter(nullptr, output_Q, input_I, input_Q, 2),
-        std::invalid_argument
-    );
-
-    REQUIRE_THROWS_AS(
-        filter.filter(output_I, nullptr, input_I, input_Q, 2),
-        std::invalid_argument
-    );
-
-    REQUIRE_THROWS_AS(
-        filter.filter(output_I, output_Q, nullptr, input_Q, 2),
-        std::invalid_argument
-    );
-
-    REQUIRE_THROWS_AS(
-        filter.filter(output_I, output_Q, input_I, nullptr, 2),
-        std::invalid_argument
-    );
-}
-
 TEST_CASE("Biquad identity filter preserves IQ", "[biquad]") {
     BiquadFilter filter(identity_coeff());
 

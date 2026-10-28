@@ -6,6 +6,10 @@
 #include <limits>
 #include <vector>
 
+#define NS_PER_US 1000
+#define NS_PER_MS 1000000
+#define NS_PER_S 1000000000
+
 namespace detail {
     constexpr uint64_t safety_margin_ns = 1000000; // 1 ms safety margin
     constexpr size_t chunk_size = 4096; // Size of each chunk in the buffer
@@ -15,12 +19,11 @@ namespace detail {
 
 class Buffer {
 public:
-    using DspCallback = void (*)(
+    using DspCallback = size_t (*)(
         void *user_data,
         float *I, 
         float *Q, 
-        size_t complex_samples, 
-        uint64_t *estimated_runtime_ns
+        size_t samples
     );
 
 private:
@@ -45,6 +48,13 @@ public:
     Buffer& operator=(Buffer&&) = delete;
 
     /*
+     * Initialize an uninitialized buffer.
+     * @param num_chunks The number of chunks in the buffer.
+     * @param sample_rate The sample rate of the buffer.
+     */
+    void initialize(size_t num_chunks, uint64_t sample_rate);
+
+    /*
      * Pushes a pair of float values (I and Q) into the buffer.
      * @param I The in-phase component to be pushed into the buffer.
      * @param Q The quadrature component to be pushed into the buffer.
@@ -55,8 +65,9 @@ public:
     /*
      * Registers a DSP function to be called when a chunk of the buffer is complete.
      * @param callback The DSP function to be registered.
+     * @param runtime_hint_ns Initial hint to the scheduler on how long the callback takes to run.
      */
-    void register_dsp(DspCallback callback, uint64_t estimated_runtime_ns);
+    void register_dsp(DspCallback callback, uint64_t runtime_hint_ns);
 
     /*
      * Consume buffer data chunks and call DSP functions on the data. Continues
@@ -88,8 +99,8 @@ private:
 
     uint64_t total_estimated_runtime_ns() const noexcept;
 
-    const size_t m_capacity_samples;
-    const uint64_t m_sample_rate;
+    size_t m_capacity_samples;
+    uint64_t m_sample_rate;
 
     // Fixed allocations: no allocation in push() or normal DSP path;
     std::vector<float> m_buffer_I;

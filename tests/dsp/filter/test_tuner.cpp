@@ -8,20 +8,10 @@
 
 namespace {
     constexpr float tolerance = 1e-4f;
-
-    BiquadCoeff identity_coeff() {
-        return BiquadCoeff{
-            .b0 = 1.0f,
-            .b1 = 0.0f,
-            .b2 = 0.0f,
-            .a1 = 0.0f,
-            .a2 = 0.0f
-        };
-    }
 }
 
 TEST_CASE("Tuner with zero offset preserves IQ", "[tuner]") {
-    Tuner tuner(48'000, identity_coeff(), 0);
+    Tuner tuner(48'000);
 
     const float input_I[] = {1.0f, 0.0f, -1.0f, 0.5f};
     const float input_Q[] = {0.0f, 1.0f, 0.0f, -0.5f};
@@ -43,7 +33,7 @@ TEST_CASE("Tuner shifts a matching complex tone to DC", "[tuner]") {
     constexpr int64_t tone_hz = 3'000;
     constexpr size_t count = 256;
 
-    Tuner tuner(sample_rate, identity_coeff(), 0);
+    Tuner tuner(sample_rate);
     tuner.set_tuning_offset(tone_hz);
 
     std::vector<float> input_I(count), input_Q(count);
@@ -76,8 +66,8 @@ TEST_CASE("Tuner preserves oscillator phase across blocks", "[tuner]") {
     constexpr int64_t tone_hz = 1'000;
     constexpr size_t count = 300;
 
-    Tuner whole_tuner(sample_rate, identity_coeff(), 0);
-    Tuner split_tuner(sample_rate, identity_coeff(), 0);
+    Tuner whole_tuner(sample_rate);
+    Tuner split_tuner(sample_rate);
 
     whole_tuner.set_tuning_offset(tone_hz);
     split_tuner.set_tuning_offset(tone_hz);
@@ -120,7 +110,7 @@ TEST_CASE("Tuner preserves oscillator phase across blocks", "[tuner]") {
 }
 
 TEST_CASE("Tuner rejects null pointers", "[tuner]") {
-    Tuner tuner(48'000, identity_coeff(), 0);
+    Tuner tuner(48'000);
 
     float input_I[2]{}, input_Q[2]{};
     float output_I[2]{}, output_Q[2]{};

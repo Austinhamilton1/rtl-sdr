@@ -43,13 +43,6 @@ size_t Sampler::process(
         return 0;
     }
 
-    if (output_I == nullptr || output_Q == nullptr ||
-        I == nullptr || Q == nullptr) {
-        throw std::invalid_argument(
-            "IQ input and output pointers must not be null."
-        );
-    }
-
     size_t output_count = 0;
     uint64_t phase = m_phase;
 
@@ -58,9 +51,14 @@ size_t Sampler::process(
     for(size_t i = 0; i < num_samples; i++) {
         if(phase >= threshold) {
             phase -= threshold;
+            
+            if(output_I != nullptr && I != nullptr) {
+                output_I[output_count] = I[i];
+            }
 
-            output_I[output_count] = I[i];
-            output_Q[output_count] = Q[i];
+            if(output_Q != nullptr && Q != nullptr) {
+                output_Q[output_count] = Q[i];
+            }
 
             output_count++;
         } else {

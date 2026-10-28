@@ -9,7 +9,7 @@ namespace {
     constexpr double two_pi = 2.0 * pi;
 }
 
-Tuner::Tuner(uint64_t sample_rate, BiquadCoeff coeff, size_t num_filters)
+Tuner::Tuner(uint32_t sample_rate)
     : m_sample_rate(static_cast<double>(sample_rate))
 {
     if(sample_rate == 0) {
@@ -17,12 +17,16 @@ Tuner::Tuner(uint64_t sample_rate, BiquadCoeff coeff, size_t num_filters)
             "Sample rate must be greater than zero."
         );
     }
+}
 
-    m_filters.reserve(num_filters);
-    
-    for(size_t i = 0; i < num_filters; i++) {
-        m_filters.emplace_back(coeff);
+void Tuner::initialize(uint32_t sample_rate) {
+    if(sample_rate == 0) {
+        throw std::invalid_argument(
+            "Sample rate must be greater than zero."
+        );
     }
+    
+    m_sample_rate = static_cast<double>(sample_rate);
 }
 
 void Tuner::set_tuning_offset(int32_t offset_hz) noexcept {
@@ -92,14 +96,4 @@ void Tuner::process(
     }
 
     m_phase = phase;
-
-    // Filtering in place is safe with the corrected BiquadFilter
-    // implementation that caches inputs before writing outputs.
-    for (auto& filter : m_filters) {
-        filter.filter(
-            output_I, output_Q,
-            output_I, output_Q,
-            num_samples
-        );
-    }
 }

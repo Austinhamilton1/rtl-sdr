@@ -27,7 +27,7 @@ public:
      * @param Q Q factor.
      * @return BiquadCoeff struct containing the filter coefficients.
      */
-    BiquadCoeff make_lowpass(double sample_rate, double cutoff_freq, double Q);
+    static BiquadCoeff make_lowpass(double sample_rate, double cutoff_freq, double Q);
 private:
     BiquadCoeff c;
     float x1_i = 0, x2_i = 0, y1_i = 0, y2_i = 0;

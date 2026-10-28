@@ -3,7 +3,12 @@ SHARED
     radio.cpp
 )
 
-target_link_libraries(radio_sdr PRIVATE ${RTLSDR_LIBRARIES})
+target_link_libraries(radio_sdr 
+PRIVATE 
+    ${RTLSDR_LIBRARIES}
+    audio
+    dsp
+)
 
 target_include_directories(radio_sdr
 PRIVATE

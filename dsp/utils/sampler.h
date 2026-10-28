@@ -42,8 +42,8 @@ public:
     void reset() noexcept;
 
 private:
-    const uint64_t m_input_rate;
-    const uint64_t m_output_rate;
+    uint64_t m_input_rate;
+    uint64_t m_output_rate;
 
     // Always less than m_input_rate.
     uint64_t m_phase;

@@ -109,30 +109,3 @@ TEST_CASE("Sampler rejects invalid sample rates", "[sampler]") {
     REQUIRE_THROWS_AS(Sampler(48'000, 0), std::invalid_argument);
     REQUIRE_THROWS_AS(Sampler(48'000, 96'000), std::invalid_argument);
 }
-
-TEST_CASE("Sampler rejects null pointers", "[sampler]") {
-    Sampler sampler(48'000, 24'000);
-
-    float input_I[4]{}, input_Q[4]{};
-    float output_I[4]{}, output_Q[4]{};
-
-    REQUIRE_THROWS_AS(
-        sampler.process(nullptr, output_Q, input_I, input_Q, 4),
-        std::invalid_argument
-    );
-
-    REQUIRE_THROWS_AS(
-        sampler.process(output_I, nullptr, input_I, input_Q, 4),
-        std::invalid_argument
-    );
-
-    REQUIRE_THROWS_AS(
-        sampler.process(output_I, output_Q, nullptr, input_Q, 4),
-        std::invalid_argument
-    );
-
-    REQUIRE_THROWS_AS(
-        sampler.process(output_I, output_Q, input_I, nullptr, 4),
-        std::invalid_argument
-    );
-}
