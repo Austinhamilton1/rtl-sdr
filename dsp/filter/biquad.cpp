@@ -16,9 +16,9 @@ void BiquadFilter::filter(
     if(output_I != nullptr && I != nullptr) { 
         for(size_t i = 0; i < num_samples; i++) {
             // Cache inputs before writing outputs; supports in-place filtering.
-            const float input_i = I[i];
+            const double input_i = I[i];
 
-            const float filtered_i =
+            const double filtered_i =
                 c.b0 * input_i
                 + c.b1 * x1_i
                 + c.b2 * x2_i
@@ -30,16 +30,16 @@ void BiquadFilter::filter(
             y2_i = y1_i;
             y1_i = filtered_i;
 
-            output_I[i] = filtered_i;
+            output_I[i] = static_cast<float>(filtered_i);
         }
     }
 
     if(output_Q != nullptr && Q != nullptr) {
         for(size_t i = 0; i < num_samples; i++) {
             // Cache inputs before writing outputs; supports in-place filtering.
-            const float input_q = Q[i];
+            const double input_q = Q[i];
 
-            const float filtered_q =
+            const double filtered_q =
                 c.b0 * input_q
                 + c.b1 * x1_q
                 + c.b2 * x2_q
@@ -51,7 +51,7 @@ void BiquadFilter::filter(
             y2_q = y1_q;
             y1_q = filtered_q;
 
-            output_Q[i] = filtered_q;
+            output_Q[i] = static_cast<float>(filtered_q);
         }
     }
 }

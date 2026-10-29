@@ -18,8 +18,10 @@ public:
      */
     float process(float input);
 
+    void initialize(float cutoff_freq, float sample_rate);
+
 private:
     float m_prev_input = 0.0f;
     float m_prev_output = 0.0f;
-    float R;    // Close to 1; derived from the cutoff frequency and sample rate
+    float R = 0.0f;    // Close to 1; derived from the cutoff frequency and sample rate
 };

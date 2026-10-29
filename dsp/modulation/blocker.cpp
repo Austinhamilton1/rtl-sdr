@@ -18,3 +18,10 @@ float DCBlocker::process(float input) {
 
     return output;
 }
+
+void DCBlocker::initialize(float cutoff_freq, float sample_rate) {
+    if (cutoff_freq <= 0 || sample_rate <= 0) {
+        throw std::invalid_argument("Cutoff frequency and sample rate must be positive");
+    }
+    R = 1.0f - (2.0f * M_PI * cutoff_freq / sample_rate);
+}

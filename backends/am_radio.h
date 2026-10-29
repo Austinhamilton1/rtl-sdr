@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -89,8 +90,11 @@ public:
     /*
      * Get a reference to the internal audio filter.
      */
-    BiquadFilter& audio_filter() noexcept {
-        return m_audio_filter;
+    BiquadFilter& audio_filter_1() noexcept {
+        return m_audio_filter_1;
+    }
+    BiquadFilter& audio_filter_2() noexcept {
+        return m_audio_filter_2;
     }
 
     /*
@@ -120,6 +124,26 @@ public:
     float gain_linear() const noexcept {
         return m_gain_linear.load(std::memory_order_relaxed);
     }
+
+    void set_audio_samples(uint64_t samples) {
+        m_num_audio_samples.store(samples, std::memory_order_relaxed);
+    }
+
+    uint64_t get_audio_samples() {
+        return m_num_audio_samples.load(std::memory_order_relaxed);
+    }
+
+    uint64_t get_iq_samples() {
+        return m_num_iq_samples.load(std::memory_order_relaxed);
+    }
+
+    void set_rms(size_t i, float rms) {
+        m_rms[i].store(rms, std::memory_order_relaxed);
+    }
+
+    float get_rms(size_t i) {
+        return m_rms[i].load(std::memory_order_relaxed);
+    }
     
 private:
     SDRRadio m_sdr;
@@ -128,7 +152,8 @@ private:
     Tuner m_tuner;
     BiquadFilter m_channel_filter;
     DCBlocker m_dc_blocker;
-    BiquadFilter m_audio_filter;
+    BiquadFilter m_audio_filter_1;
+    BiquadFilter m_audio_filter_2;
     Sampler m_resampler;
 
     Buffer m_buffer;
@@ -144,4 +169,9 @@ private:
     std::thread m_consumer;
 
     std::atomic<float> m_gain_linear{1.0f};
+
+    std::atomic<uint64_t> m_num_iq_samples{0};
+    std::atomic<uint64_t> m_num_audio_samples{0};
+
+    std::array<std::atomic<float>, 8> m_rms{};
 };

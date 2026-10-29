@@ -2,11 +2,24 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
+#include <stdexcept>
 
 #include "dsp/modulation/demodulate.h"
 
 namespace {
     constexpr double butterworth = 0.707106781;
+    constexpr double butterworth_1 = 0.5412;
+    constexpr double butterworth_2 = 1.3066;
+
+    float rms(float *samples, size_t sample_size) {
+        float sum = 0.0f;
+        for(size_t i = 0; i < sample_size; i++) {
+            sum += samples[i] * samples[i] / sample_size;
+        }
+
+        return std::sqrt(sum);
+    }
 
     size_t dsp_tune(void *userdata, float *I, float *Q, size_t complex_samples) {
         AMReceiver *am = static_cast<AMReceiver *>(userdata);
@@ -49,13 +62,15 @@ namespace {
 
         auto& samples = am->envelopes();
 
-        for(size_t i = 0; i < envelopes; i++) {
-            samples[i] = am->dc_blocker().process(samples[i]);
-        }
+        am->audio_filter_1().filter(
+            samples.data(), nullptr, 
+            samples.data(), nullptr, 
+            envelopes
+        );
 
-        am->audio_filter().filter(
-            samples.data(), nullptr, 
-            samples.data(), nullptr, 
+        am->audio_filter_2().filter(
+            samples.data(), nullptr,
+            samples.data(), nullptr,
             envelopes
         );
 
@@ -78,9 +93,10 @@ namespace {
         AMReceiver *am = static_cast<AMReceiver *>(userdata);
 
         auto& samples = am->resampled();
-        const float gain = am->gain_linear();
+        const float gain = 100.0f;
 
         for(size_t i = 0; i < resampled_size; i++) {
+            samples[i] = am->dc_blocker().process(samples[i]);
             samples[i] = std::clamp(
                 samples[i] * gain,
                 -1.0f,
@@ -94,10 +110,13 @@ namespace {
     size_t dsp_audio_write(void *userdata, float *, float *, size_t resampled_size) {
         AMReceiver *am = static_cast<AMReceiver *>(userdata);
 
-        am->sink().write(
+        size_t samples = am->sink().write(
             am->resampled().data(),
             resampled_size
         );
+
+        uint64_t past_samples = am->get_audio_samples();
+        am->set_audio_samples(past_samples + samples);
 
         return resampled_size;
     }
@@ -125,10 +144,12 @@ void AMReceiver::initialize(const RadioConfig& config) {
     // 1. Coonfigure RTL-SDR: RF center, sample rate,
     //    receive bandwidth, and gain.
     m_sdr.open();
+    m_sdr.set_direct_sampling(2);
     m_sdr.set_center_frequency(config.center_frequency);
     m_sdr.set_sample_rate(config.iq_sample_rate);
     m_sdr.set_rx_bandwidth(config.channel_cutoff);
     m_sdr.set_gain_mode(true);
+    m_sdr.reset_buffer();
 
     // 2. Design channel-filter coefficients using IQ rate.
     auto channel_c = BiquadFilter::make_lowpass(config.iq_sample_rate, config.channel_cutoff, butterworth);
@@ -138,13 +159,18 @@ void AMReceiver::initialize(const RadioConfig& config) {
     m_tuner.initialize(config.iq_sample_rate);
 
     // 4. Design audio-filter coefficients using the IQ rate.
-    auto audio_c = BiquadFilter::make_lowpass(config.iq_sample_rate, config.audio_cutoff, butterworth);
-    m_audio_filter = BiquadFilter(audio_c);
+    auto audio_c1 = BiquadFilter::make_lowpass(config.iq_sample_rate, config.audio_cutoff, butterworth_1);
+    auto audio_c2 = BiquadFilter::make_lowpass(config.iq_sample_rate, config.audio_cutoff, butterworth_2);
+    m_audio_filter_1 = BiquadFilter(audio_c1);
+    m_audio_filter_2 = BiquadFilter(audio_c2);
 
-    // 5. Configure the resampler for IQ rate -> 48 KHz.
+    // 5. Configure the resampler for IQ rate -> audio rate.
     m_resampler = Sampler(config.iq_sample_rate, config.audio_sample_rate);
-    
-    // 6. Allocate the buffer.
+
+    // 6. Configure the blocker for audio rate
+    m_dc_blocker.initialize(20.0f, config.audio_sample_rate);
+
+    // 7. Allocate the buffer.
     m_buffer.initialize(256, config.iq_sample_rate);
     m_buffer.register_dsp(dsp_tune, 10 * NS_PER_MS);
     m_buffer.register_dsp(dsp_channel_filter, 10 * NS_PER_MS);
@@ -169,7 +195,7 @@ void AMReceiver::initialize(const RadioConfig& config) {
         static_cast<size_t>(estimated_output_samples) + 2
     );
 
-    // 7. Open the audio sink at 48 kHz mono.
+    // 9. Open the audio sink at 48 kHz mono.
     m_sink.initialize(config.audio_sample_rate);
     m_sink.open();
 }
@@ -187,10 +213,22 @@ void AMReceiver::run() {
 
     m_producer = std::thread([&] {
         while(m_running.load(std::memory_order_relaxed)) {
-            if(m_sdr.read_samples(m_buffer, 4096) < 0) {
+            int64_t samples = m_sdr.read_samples(m_buffer, 4096);
+
+            if(samples < 0) {
+                std::cerr << "SDR read failed\n";
                 request_stop();
                 break;
             }
+
+            if(samples == 0) {
+                std::cerr << "SDR returned zero samples\n";
+            }
+
+            m_num_iq_samples.fetch_add(
+                static_cast<uint64_t>(samples),
+                std::memory_order_relaxed
+            );
         }
     });
 

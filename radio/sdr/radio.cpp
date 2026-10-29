@@ -1,6 +1,8 @@
 #include "radio.h"
 
+#include <iostream>
 #include <stdexcept>
+#include <vector>
 
 void SDRRadio::open() {
     int result = rtlsdr_open(&m_dev, 0);
@@ -56,25 +58,77 @@ void SDRRadio::set_gain(int gain) {
     }
 }
 
+void SDRRadio::reset_buffer() {
+    if(rtlsdr_reset_buffer(m_dev) < 0) {
+        close();
+        throw std::runtime_error("Could not reset buffer");
+    }
+}
+
+void SDRRadio::set_direct_sampling(int mode) {
+    if(mode < 0 || mode > 2) {
+        throw std::invalid_argument(
+            "Direct sampling mode must be 0, 1, or 2"
+        );
+    }
+
+    if(rtlsdr_set_direct_sampling(m_dev, mode) < 0) {
+        throw std::runtime_error(
+            "Could not set direct sampling mode."
+        );
+    }
+}
+
 int64_t SDRRadio::read_samples(Buffer& buffer, int32_t num_samples) {
-    int values_read = 0;
-    int16_t *buf = new int16_t[num_samples * 2]; // Each sample has I and Q components
-
-    int result = rtlsdr_read_sync(m_dev, buf, num_samples * sizeof(int16_t) * 2, &values_read);
-
-    if(result < 0) {
-        delete[] buf;
-        return -1; // Return -1 to indicate failure
+    if (num_samples <= 0) {
+        return 0;
     }
 
-    for(int i = 0; i < values_read / 2; ++i) {
-        const int16_t i_sample = buf[2 * i];
-        const int16_t q_sample = buf[2 * i + 1];
-        buffer.push(static_cast<float>(i_sample) / 32768.0f, static_cast<float>(q_sample) / 32768.0f);
+    std::vector<uint8_t> raw(
+        static_cast<size_t>(num_samples) * 2
+    );
+
+    int bytes_read = 0;
+
+    const int result = rtlsdr_read_sync(
+        m_dev,
+        raw.data(),
+        static_cast<int>(raw.size()),
+        &bytes_read
+    );
+
+    if (result < 0) {
+        std::cerr << "rtlsdr_read_sync failed: "
+                  << result << '\n';
+        return -1;
     }
 
-    delete[] buf;
-    return values_read / 2;
+    if (bytes_read < 0 ||
+        bytes_read > static_cast<int>(raw.size()) ||
+        bytes_read % 2 != 0) {
+        std::cerr << "Invalid byte count: "
+                  << bytes_read << '\n';
+        return -1;
+    }
+
+    const size_t complex_samples =
+        static_cast<size_t>(bytes_read) / 2;
+
+    for (size_t n = 0; n < complex_samples; ++n) {
+        const float i_sample =
+            (static_cast<float>(raw[2 * n]) - 127.5f) / 127.5f;
+
+        const float q_sample =
+            (static_cast<float>(raw[2 * n + 1]) - 127.5f) / 127.5f;
+
+        if (buffer.push(i_sample, q_sample) < 0) {
+            std::cerr << "Buffer push failed at sample "
+                      << n << " of " << complex_samples << '\n';
+            return -1;
+        }
+    }
+
+    return static_cast<int64_t>(complex_samples);
 }
 
 void SDRRadio::close() {

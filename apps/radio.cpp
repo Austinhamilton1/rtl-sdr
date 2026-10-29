@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h> // Will automatically include system OpenGL headers
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 

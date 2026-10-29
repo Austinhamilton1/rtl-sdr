@@ -3,7 +3,7 @@
 #include <cstddef>
 
 struct BiquadCoeff {
-    float b0, b1, b2, a1, a2;
+    double b0, b1, b2, a1, a2;
 };
 
 class BiquadFilter {
@@ -30,8 +30,9 @@ public:
      * @return BiquadCoeff struct containing the filter coefficients.
      */
     static BiquadCoeff make_lowpass(double sample_rate, double cutoff_freq, double Q);
-private:
+public:
     BiquadCoeff c;
-    float x1_i = 0, x2_i = 0, y1_i = 0, y2_i = 0;
-    float x1_q = 0, x2_q = 0, y1_q = 0, y2_q = 0;
+private:
+    double x1_i = 0, x2_i = 0, y1_i = 0, y2_i = 0;
+    double x1_q = 0, x2_q = 0, y1_q = 0, y2_q = 0;
 };

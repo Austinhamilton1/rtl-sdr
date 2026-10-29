@@ -50,6 +50,16 @@ public:
     void set_gain(int gain);
 
     /*
+     * Reset the SDR buffer.
+     */
+    void reset_buffer();
+
+    /*
+     * Set the direct sampling mode.
+     */
+    void set_direct_sampling(int mode);
+
+    /*
      * Reads samples from the SDR radio.
      * @param buffer The buffer to read samples into.
      * @param num_samples The number of samples to read.
