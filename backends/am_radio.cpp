@@ -211,7 +211,7 @@ void AMReceiver::run() {
 
     m_producer = std::thread([&] {
         while(m_running.load(std::memory_order_relaxed)) {
-            int64_t samples = m_sdr.read_samples(m_buffer, 4096);
+            int64_t samples = m_sdr.read_samples(m_buffer);
 
             if(samples < 0) {
                 std::cerr << "SDR read failed\n";

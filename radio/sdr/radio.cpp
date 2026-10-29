@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <stdexcept>
-#include <vector>
 
 void SDRRadio::open() {
     int result = rtlsdr_open(&m_dev, 0);
@@ -10,6 +9,10 @@ void SDRRadio::open() {
     if(result < 0) {
         throw std::runtime_error("Could not open RTL-SDR device");
     }
+
+    m_raw.resize(
+        static_cast<size_t>(detail::chunk_size) * 2
+    );
 }
 
 void SDRRadio::set_center_frequency(uint32_t frequency) {
@@ -79,21 +82,13 @@ void SDRRadio::set_direct_sampling(int mode) {
     }
 }
 
-int64_t SDRRadio::read_samples(Buffer& buffer, int32_t num_samples) {
-    if (num_samples <= 0) {
-        return 0;
-    }
-
-    std::vector<uint8_t> raw(
-        static_cast<size_t>(num_samples) * 2
-    );
-
+int64_t SDRRadio::read_samples(Buffer& buffer) {
     int bytes_read = 0;
 
     const int result = rtlsdr_read_sync(
         m_dev,
-        raw.data(),
-        static_cast<int>(raw.size()),
+        m_raw.data(),
+        static_cast<int>(m_raw.size()),
         &bytes_read
     );
 
@@ -104,7 +99,7 @@ int64_t SDRRadio::read_samples(Buffer& buffer, int32_t num_samples) {
     }
 
     if (bytes_read < 0 ||
-        bytes_read > static_cast<int>(raw.size()) ||
+        bytes_read > static_cast<int>(m_raw.size()) ||
         bytes_read % 2 != 0) {
         std::cerr << "Invalid byte count: "
                   << bytes_read << '\n';
@@ -116,10 +111,10 @@ int64_t SDRRadio::read_samples(Buffer& buffer, int32_t num_samples) {
 
     for (size_t n = 0; n < complex_samples; ++n) {
         const float i_sample =
-            (static_cast<float>(raw[2 * n]) - 127.5f) / 127.5f;
+            (static_cast<float>(m_raw[2 * n]) - 127.5f) / 127.5f;
 
         const float q_sample =
-            (static_cast<float>(raw[2 * n + 1]) - 127.5f) / 127.5f;
+            (static_cast<float>(m_raw[2 * n + 1]) - 127.5f) / 127.5f;
 
         if (buffer.push(i_sample, q_sample) < 0) {
             std::cerr << "Buffer push failed at sample "

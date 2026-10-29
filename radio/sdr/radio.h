@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <rtl-sdr.h>
+#include <vector>
 
 #include "dsp/utils/buffer.h"
 
@@ -62,10 +63,9 @@ public:
     /*
      * Reads samples from the SDR radio.
      * @param buffer The buffer to read samples into.
-     * @param num_samples The number of samples to read.
      * @return The number of samples actually read or -1 on failure.
      */
-    int64_t read_samples(Buffer& buffer, int32_t num_samples);
+    int64_t read_samples(Buffer& buffer);
 
     /*
      * Closes the SDR radio.
@@ -74,4 +74,5 @@ public:
 
 private:
     rtlsdr_dev_t *m_dev = nullptr;
+    std::vector<uint8_t> m_raw;
 };

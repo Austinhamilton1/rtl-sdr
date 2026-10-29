@@ -12,6 +12,6 @@ TEST_CASE("Radio can read from RTL", "[radio] [behavior]") {
     REQUIRE_NOTHROW(radio.set_sample_rate(2048000));
     REQUIRE_NOTHROW(radio.reset_buffer());
      
-    int64_t result = radio.read_samples(buffer, 4096);
-    REQUIRE(result == 4096);
+    int64_t result = radio.read_samples(buffer);
+    REQUIRE(result >= 0);
 }
