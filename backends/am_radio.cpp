@@ -142,12 +142,10 @@ void AMReceiver::initialize(const RadioConfig& config) {
     set_audio_gain(m_config.audio_gain);
 
     // 1. Coonfigure RTL-SDR: RF center, sample rate,
-    //    receive bandwidth, and gain.
+    //    and gain.
     m_sdr.open();
-    m_sdr.set_direct_sampling(2);
     m_sdr.set_center_frequency(config.center_frequency);
     m_sdr.set_sample_rate(config.iq_sample_rate);
-    m_sdr.set_rx_bandwidth(config.channel_cutoff);
     m_sdr.set_gain_mode(true);
     m_sdr.reset_buffer();
 
@@ -202,8 +200,8 @@ void AMReceiver::initialize(const RadioConfig& config) {
 
 void AMReceiver::set_station_frequency(uint32_t station_hz) {
     const int64_t offset = 
-        static_cast<int64_t>(m_config.center_frequency)
-        - static_cast<int64_t>(station_hz);
+        static_cast<int64_t>(station_hz)
+        - static_cast<int64_t>(m_config.center_frequency);
 
     m_tuner.set_tuning_offset(static_cast<int32_t>(offset));
 }

@@ -64,7 +64,7 @@ void Tuner::process(
 
     // Multiply by exp(-j * phase) to shift +offset toward DC.
     const double phase_increment =
-        two_pi * offset / m_sample_rate;
+        -two_pi * offset / m_sample_rate;
 
     double phase = m_phase;
 

@@ -1,4 +1,5 @@
 add_executable(modulation_test
+    test_blocker.cpp
     test_modulation.cpp
 )
 
